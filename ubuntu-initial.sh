@@ -22,8 +22,8 @@ if [[ $SUDO_USER = "root" ]]; then
   usermod -aG sudo $SUDO_USER
   HOME=/home/$SUDO_USER
   echo "$SUDO_USER  ALL=(ALL:ALL) ALL" >> /etc/sudoers
-  cp -r "$PWD" ~/
   chown -R $SUDO_USER:$SUDO_USER ~/
+  fail "login as this new user and try again"
 fi
 [[ -z $EMAIL ]] && read -e -p "Enter your email address: " EMAIL
 
@@ -35,12 +35,13 @@ else
 fi
 echo 'Defaults        timestamp_timeout=3600' >> /etc/sudoers
 
-if [[ ! -s ~/.ssh/authorized_keys ]]; then
+myhome=/home/$SUDO_USER
+if [[ ! -s $myhome/.ssh/authorized_keys ]]; then
   [[ -z $PUB_KEY ]] && read -e -p "Please paste your public key here: " PUB_KEY
-  mkdir -p ~/.ssh
-  chmod 700 ~/.ssh
-  echo $PUB_KEY > ~/.ssh/authorized_keys
-  chmod 600 ~/.ssh/authorized_keys
+  mkdir -p $myhome/.ssh
+  chmod 700 $myhome/.ssh
+  echo $PUB_KEY > $myhome/.ssh/authorized_keys
+  chmod 600 $myhome/.ssh/authorized_keys
 fi
 [[ -z $AUTO_REBOOT ]] && read -e -p "Reboot automatically when required for upgrades? [y/n] " -i y AUTO_REBOOT
 
@@ -80,9 +81,9 @@ apt-fast -qy install vim-nox python3-powerline rsync ubuntu-drivers-common pytho
 env DEBIAN_FRONTEND=noninteractive APT_LISTCHANGES_FRONTEND=mail apt-fast full-upgrade -qy -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'
 sudo apt -qy autoremove
 
-mkdir -p ~/.ssh
-chmod 700 ~/.ssh
-cat << 'EOF' >> ~/.ssh/config
+mkdir -p $myhome/.ssh
+chmod 700 $myhome/.ssh
+cat << 'EOF' >> $myhome/.ssh/config
 Host *
   ServerAliveInterval 60
   StrictHostKeyChecking no
@@ -94,19 +95,8 @@ Host github.com
   TCPKeepAlive yes
   IdentitiesOnly yes
 EOF
-chmod 600 ~/.ssh/config
-chown -R $SUDO_USER:$SUDO_USER ~/.ssh
-
-# A swap file can be helpful if you don't have much RAM (i.e <1G)
-fallocate -l 1G /swapfile
-chmod 600 /swapfile
-mkswap /swapfile
-if swapon /swapfile; then
-  echo "/swapfile swap swap defaults 0 0" | tee -a /etc/fstab
-else
-  echo "Your administrator has disabled adding a swap file. This is just FYI, it is not an error."
-  rm -f /swapfile
-fi
+chmod 600 $myhome/.ssh/config
+chown -R $SUDO_USER:$SUDO_USER $myhome/.ssh
 
 perl -ni.bak -e 'print unless /^\s*(PermitEmptyPasswords|PermitRootLogin|PasswordAuthentication|ChallengeResponseAuthentication)/' /etc/ssh/sshd_config
 cat << 'EOF' >> /etc/ssh/sshd_config
